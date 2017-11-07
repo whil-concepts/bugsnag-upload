@@ -5,10 +5,14 @@ module Fastlane
       def self.run(params)
         require "json"
 
-        if lane_context[:PLATFORM_NAME] === :android
-          options = get_android_options(params)
+        if !params[:config_file].nil?
+          if lane_context[:PLATFORM_NAME] === :android
+            options = get_android_options(params)
+          else
+            options = get_ios_options(params)
+          end
         else
-          options = get_ios_options(params)
+          options = {}
         end
 
         git_options = get_git_options()
@@ -23,6 +27,10 @@ module Fastlane
         options[:provider] = params[:provider] unless params[:provider].nil?
 
         options.reject {|k,v| v == nil}
+
+        if options[:apiKey].nil?
+          raise ArgumentError.new "The deployment must be provided with a Bugsnag API KEY, through the configuration file or the api_key option"
+        end
         send_notification(params[:endpoint], ::JSON.dump(options))
       end
 
@@ -50,7 +58,8 @@ module Fastlane
         [
           FastlaneCore::ConfigItem.new(key: :config_file,
                                        description: "AppManifest.xml/Info.plist location",
-                                       optional: false),
+                                       optional: true,
+                                       default_value: nil),
           FastlaneCore::ConfigItem.new(key: :api_key,
                                        description: "Bugsnag API Key",
                                        optional: true,
